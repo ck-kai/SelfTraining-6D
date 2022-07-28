@@ -32,10 +32,10 @@ git checkout v0.1
 python setup.py develop
 ```
 ## Dataset
-Download our processed ROBI dataset from [here] and put them into 'SelfTraining-6D/data'
+Download our processed ROBI dataset from [here](https://mycuhk-my.sharepoint.com/:f:/g/personal/1155156867_link_cuhk_edu_hk/ErXAn877Pf5Il30MgnQsdhsBWpKD5UL-Z3jV5JWdRL__kQ?e=9jbajM) and put them into 'SelfTraining-6D/data'
 
 ## Virtual Training
-Following [object-posenet](https://github.com/mentian/object-posenet) to train an object pose estimation model on our provided virtual data. Put the virtual model into 'SelfTraining-6D/virtual_models'. To skip this step, you can download our provided virtual model from [here].
+Following [object-posenet](https://github.com/mentian/object-posenet) to train an object pose estimation model on our provided virtual data. Put the virtual model into 'SelfTraining-6D/virtual_models'. To skip this step, you can download our provided virtual model from [here](https://mycuhk-my.sharepoint.com/:u:/g/personal/1155156867_link_cuhk_edu_hk/EX-SKk8LTWZGpsdYAhlS1vEBMn-vVIQBq7wJFI4y8wBvxw?e=8Qtzau).
 
 ## Sim-to-Real Training
 self_training.py is the main file for sim-to-real self-training.
