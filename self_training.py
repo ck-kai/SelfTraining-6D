@@ -9,7 +9,6 @@ import shutil
 import numpy as np
 import torch
 from torch.autograd import Variable
-import tensorflow as tf
 from lib.network import PoseNet
 from lib.loss import Loss
 from lib.ransac_voting.ransac_voting_gpu import ransac_voting_layer
@@ -84,21 +83,26 @@ def self_training_with_real_data(iter_idx = 1, estimator_best_test = np.Inf, rob
     if not os.path.exists(opt.log_dir):
         os.makedirs(opt.log_dir)
 
+    print("init model")
     estimator = PoseNet(num_points = opt.num_points, num_obj = opt.num_objects, num_rot = opt.num_rot)
+    print("model initialized")
     estimator.cuda()
 
+    print("load model")
     opt.resume_dir = 'real_models/' + robi_object + '/best'
     estimator.load_state_dict(torch.load('{0}/{1}'.format(opt.resume_dir, opt.resume_posenet)))
 
+    print("init dataset")
     opt.train_dataset_root = './data/' + robi_object + '/teacher_label_iter_' + str(iter_idx).zfill(2)
     dataset = PoseDataset('train', opt.num_points, True, opt.train_dataset_root, opt.noise_trans)
-    dataloader = torch.utils.data.DataLoader(dataset, batch_size=opt.batch_size, shuffle=True, num_workers=1)
+    print("dataset root:",opt.train_dataset_root,"#samples:",len(dataset))
+    dataloader = torch.utils.data.DataLoader(dataset, batch_size=opt.batch_size, shuffle=True, num_workers=4)
 
     opt.sym_list = dataset.get_sym_list()
     opt.num_points_mesh = dataset.get_num_points_mesh()
     opt.diameters = dataset.get_diameter()
     criterion = Loss(opt.sym_list, estimator.rot_anchors)
-    knn = KNearestNeighbor(1)
+    k_nearest = 1
 
     optimizer = torch.optim.Adam(estimator.parameters(), lr=opt.lr)
     global_step = (len(dataset) // opt.batch_size) * (opt.start_epoch - 1)
@@ -188,7 +192,7 @@ def self_training_with_real_data(iter_idx = 1, estimator_best_test = np.Inf, rob
                 if idx[0].item() in opt.sym_list:
                     pred = torch.from_numpy(pred.astype(np.float32)).cuda().transpose(1, 0).contiguous()
                     target = torch.from_numpy(target.astype(np.float32)).cuda().transpose(1, 0).contiguous()
-                    inds = knn(target.unsqueeze(0), pred.unsqueeze(0))
+                    inds = KNearestNeighbor.apply(target.unsqueeze(0), pred.unsqueeze(0),k_nearest)
                     target = torch.index_select(target, 1, inds.view(-1) - 1)
                     dis = torch.mean(torch.norm((pred.transpose(1, 0) - target.transpose(1, 0)), dim=1), dim=0).item()
                 else:
@@ -230,8 +234,11 @@ def iterative_self_training(robi_object, start_iterations, num_iterations):
         #     old_training_data_dir = os.path.join('./data', robi_object, 'teacher_label_iter_' + str(iter-1).zfill(2))
         #     shutil.rmtree(old_training_data_dir)
 
+        print("label_poses_with_teacher...")
         label_poses_with_teacher(iter + 1, renderer_model_dir = opt.renderer_model_dir, obj_id = robi_object, intrinsics=intrinsics)
+        print("update_train_test_split...")
         update_train_test_split('./data/' + robi_object + '/teacher_label_iter_' + str(iter+1).zfill(2), './dataset/' + robi_object +'/dataset_config')
+        print("self_training_with_real_data...")
         estimator_best_test = self_training_with_real_data(iter + 1, estimator_best_test, robi_object)
 
 if __name__ == '__main__':

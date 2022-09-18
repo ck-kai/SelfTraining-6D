@@ -55,10 +55,10 @@ def compute_adds(predict_RT, gt_RT, model_pts):
     predict_pts = torch.from_numpy(predict_pts).cuda()
     gt_pts = torch.from_numpy(gt_pts).cuda()
 
-    knn = KNearestNeighbor(1)
+    k_nearest = 1
 
     # _, ind = knn(predict_pts.unsqueeze(0), gt_pts.unsqueeze(0))
-    ind = knn(predict_pts.unsqueeze(0), gt_pts.unsqueeze(0))
+    ind = KNearestNeighbor.apply(predict_pts.unsqueeze(0), gt_pts.unsqueeze(0),1)
     reference_pts = torch.index_select(predict_pts, 1, ind.view(-1) - 1)
 
     dis = torch.mean(torch.norm((reference_pts - gt_pts), dim=0))
@@ -110,8 +110,8 @@ def test_knn():
         ref = torch.rand((3, 2000)).cuda()
         query = torch.rand((3, 2000)).cuda()
 
-        knn = KNearestNeighbor(1)
-        ind = knn(ref.unsqueeze(0), query.unsqueeze(0))
+        k_nearest = 1
+        ind = KNearestNeighbor.apply(ref.unsqueeze(0), query.unsqueeze(0),k_nearest)
         # print(ind)
 
 if __name__ == '__main__':

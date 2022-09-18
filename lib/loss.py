@@ -18,7 +18,7 @@ def loss_calculation(pred_r, pred_t, pred_c, target_r, target_t, model_points, i
         loss:
 
     """
-    knn = KNearestNeighbor(1)
+    k_nearest = 1
     bs, num_p, _ = pred_t.size()
     num_rot = pred_r.size()[1]
     num_point_mesh = model_points.size()[1]
@@ -44,7 +44,7 @@ def loss_calculation(pred_r, pred_t, pred_c, target_r, target_t, model_points, i
     if idx[0].item() in sym_list:
         target_r = target_r[0].transpose(1, 0).contiguous().view(3, -1)
         pred_r = pred_r.permute(2, 0, 1).contiguous().view(3, -1)
-        inds = knn(target_r.unsqueeze(0), pred_r.unsqueeze(0))
+        inds = KNearestNeighbor.apply(target_r.unsqueeze(0), pred_r.unsqueeze(0),k_nearest)
         target_r = torch.index_select(target_r, 1, inds.view(-1).detach() - 1)
         target_r = target_r.view(3, bs*num_rot, num_point_mesh).permute(1, 2, 0).contiguous()
         pred_r = pred_r.view(3, bs*num_rot, num_point_mesh).permute(1, 2, 0).contiguous()

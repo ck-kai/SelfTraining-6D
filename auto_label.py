@@ -144,15 +144,15 @@ def label_individual_pose(estimator, scene_img, scene_depth, obj_mask, intrinsic
 # pts_in_camera: (1000, 3)
 # pts_in_obj: (1000, 3)
 # init_pose: (4, 4)
-def measure_pseudo_pose_in_3d(pts_in_camera, pts_in_obj, init_pose, knn):
+def measure_pseudo_pose_in_3d(pts_in_camera, pts_in_obj, init_pose, k_nearest):
     transformed_obj_pts = transform_coordinates_3d(pts_in_obj.T, init_pose)
     transformed_camera_pts = pts_in_camera.T
 
     target_pts = torch.from_numpy(transformed_camera_pts).cuda()
     source_pts = torch.from_numpy(transformed_obj_pts).cuda()
 
-    index1 = knn(target_pts.unsqueeze(0), source_pts.unsqueeze(0))
-    index2 = knn(source_pts.unsqueeze(0), target_pts.unsqueeze(0))
+    index1 = KNearestNeighbor.apply(target_pts.unsqueeze(0), source_pts.unsqueeze(0),k_nearest)
+    index2 = KNearestNeighbor.apply(source_pts.unsqueeze(0), target_pts.unsqueeze(0),k_nearest)
 
     pts1 = torch.index_select(target_pts, 1, index1.view(-1) - 1)
     cd1 = torch.mean(torch.norm((source_pts.float() - pts1.float()), dim=0)).cpu().item()
@@ -197,7 +197,7 @@ def measuring_pseudo_pose_in_2d(obj_id, inst_id, pose, observed_img, observed_ma
     return mask_error, perceptual_error
 
 def label_poses_with_teacher(iter_idx = 1, renderer_model_dir = 'renderer/robi_models', obj_id = '01', render_h = 480, render_w = 480, intrinsics = None):
-    knn = KNearestNeighbor(1)
+    k_nearest  = 1
     render_height = render_h
     render_width = render_w
     ren = DIBRenderer(render_height, render_width, mode="VertexColorBatch")
@@ -219,6 +219,7 @@ def label_poses_with_teacher(iter_idx = 1, renderer_model_dir = 'renderer/robi_m
     # read the data for current object
     current_obj_data_dir = os.path.join(data_root_dir, obj_id, 'training_data')
 
+    print("current_obj_data_dir:",current_obj_data_dir)
     # color image
     img_pathes = glob.glob(current_obj_data_dir + '/*_color.png')
     img_pathes = sorted(img_pathes, key=lambda a: a.split('/')[-1].split('.')[0])
@@ -288,7 +289,7 @@ def label_poses_with_teacher(iter_idx = 1, renderer_model_dir = 'renderer/robi_m
 
             pose_from_teacher, pts_in_camera, pts_in_obj = label_individual_pose(estimator, img, depth, current_mask, intrinsics, cad_model_pcs, cad_model_faces)
             if pose_from_teacher is not None:
-                dis_3d = measure_pseudo_pose_in_3d(pts_in_camera, pts_in_obj, pose_from_teacher, knn)
+                dis_3d = measure_pseudo_pose_in_3d(pts_in_camera, pts_in_obj, pose_from_teacher, k_nearest)
                 current_scene_valid_iid.append(label['instance_ids'][iid])
                 
                 current_scene_poses.append(pose_from_teacher)
@@ -349,6 +350,9 @@ def label_poses_with_teacher(iter_idx = 1, renderer_model_dir = 'renderer/robi_m
     teacher_label_dir = os.path.join(data_root_dir, obj_id, 'teacher_label_iter_' + str(iter_idx).zfill(2))
     if not os.path.exists(teacher_label_dir):
         os.makedirs(teacher_label_dir)
+
+    print("#img_pathes:",len(img_pathes))
+    print("#scene_poses:",len(scene_poses),"#good_scene_names:",len(good_scene_names))
     
     for i in range(len(good_scene_names)):
         # update the label.pkl

@@ -134,7 +134,9 @@ class PoseNet(nn.Module):
         else:
             raise NotImplementedError('num of rotation anchors must be 12, 24, or 60')
 
+        print("init ModifiedResnet")
         self.cnn = ModifiedResnet()
+        print("init ModifiedDGCNN")
         self.pointnet = ModifiedDGCNN(k)
 
         self.conv1_t = torch.nn.Conv1d(1152, 512, 1)
